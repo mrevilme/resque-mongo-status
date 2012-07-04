@@ -1,7 +1,7 @@
 source :rubygems
 
 gem 'redisk', '>= 0.2.1'
-gem 'resque', '~>1.19'
+gem 'mongo-resque', '>=1.20.0'
 gem 'uuid', '~>2.3'
 
 group :test do
