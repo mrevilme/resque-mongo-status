@@ -23,6 +23,8 @@ pkg
 doc
 .yardoc
 
-test/dump.rdb
 bin/
 .bundle
+
+test/db/
+test/db.log

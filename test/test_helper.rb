@@ -15,14 +15,12 @@ end
 # make sure we can run redis
 #
 
-if !system("which redis-server")
-  puts '', "** can't find `redis-server` in your path"
-  puts "** try running `sudo rake install`"
+if !system("which mongod")
+  puts '', "** can't find `mongod` in your path"
   abort ''
 end
-
 #
-# start our own redis when the tests start,
+# start our own mongod when the tests start,
 # kill it when they end
 #
 
@@ -35,16 +33,17 @@ at_exit do
     exit_code = Test::Unit::AutoRunner.run
   end
 
-  pid = `ps -e -o pid,command | grep [r]edis-test`.split(" ")[0]
-  puts "Killing test redis server..."
+  pid = `ps -e -o pid,command | grep "mongod.*test"`.split(" ")[0]
+  puts "Killing test mongod server..."
   Process.kill("KILL", pid.to_i)
-  `rm -f #{dir}/dump.rdb`
+  `rm -rf #{dir}/db/`
+  `mkdir #{dir}/db`
   exit exit_code
 end
 
-puts "Starting redis for testing at localhost:9736..."
-`redis-server #{dir}/redis-test.conf`
-Resque.redis = 'localhost:9736/1'
+puts "Starting mongod for testing at localhost:7944..."
+`mongod -f #{dir}/mongod.conf --dbpath #{dir}/db/ --logpath #{dir}/db.log`
+Resque.mongo = 'localhost:7944/1'
 
 #### Fixtures
 
