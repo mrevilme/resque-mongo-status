@@ -1,5 +1,5 @@
 source :rubygems
-gem 'mongo-resque', '>=1.20.0'
+gem 'mongo-resque', '>=1.20.0', :require => 'resque'
 gem 'uuid', '~>2.3'
 group :test do
   gem 'mocha', '~>0.9.8'

@@ -6,7 +6,7 @@ module Resque
 
       # Resque::Plugins::Status::Hash is a Hash object that has helper methods for dealing with
       # the common status attributes. It also has a number of class methods for
-      # creating/updating/retrieving status objects from Redis
+      # creating/updating/retrieving status objects from Mongo
       class Hash < ::Hash
 
         extend Resque::Helpers
@@ -15,24 +15,28 @@ module Resque
         # Returns the UUID of the new status.
         def self.create(uuid, *messages)
           set(uuid, *messages)
-          redis.zadd(set_key, Time.now.to_i, uuid)
-          redis.zremrangebyscore(set_key, 0, Time.now.to_i - @expire_in) if @expire_in
+
+          mongo_statuses.find({:time => {"$lte" => Time.now.to_i - @expire_in}}, {:fields => [:uuid]}).each do |status|
+            remove(status['uuid'])
+          end if @expire_in
+          
           uuid
         end
 
         # Get a status by UUID. Returns a Resque::Plugins::Status::Hash
         def self.get(uuid)
-          val = redis.get(status_key(uuid))
-          val ? Resque::Plugins::Status::Hash.new(uuid, decode(val)) : nil
+          val = mongo_statuses.find_one({:uuid => uuid}, { :fields => {:_id => 0} })
+          val ? Resque::Plugins::Status::Hash.new(uuid, val.to_hash) : nil
         end
 
         # Get multiple statuses by UUID. Returns array of Resque::Plugins::Status::Hash
         def self.mget(uuids)
-          status_keys = uuids.map{|u| status_key(u)}
-          vals = redis.mget(*status_keys)
-
-          uuids.zip(vals).map do |uuid, val|
-            val ? Resque::Plugins::Status::Hash.new(uuid, decode(val)) : nil
+          uuids.map do |uuid|
+            if item = mongo_statuses.find_one({'uuid' => uuid})
+              Resque::Plugins::Status::Hash.new(item['uuid'], item.to_hash)
+            else
+              nil
+            end
           end
         end
 
@@ -40,14 +44,15 @@ module Resque
         # that are merged in order to create a single status.
         def self.set(uuid, *messages)
           val = Resque::Plugins::Status::Hash.new(uuid, *messages)
-          redis.set(status_key(uuid), encode(val))
-          if expire_in
-            redis.expire(status_key(uuid), expire_in)
+          if obj = Resque::mongo_statuses.find_one({:uuid => uuid})
+            Resque::mongo_statuses.update({ :uuid => uuid }, {"$set" => val.to_hash})
+          else
+            Resque::mongo_statuses << val.to_hash
           end
           val
         end
 
-        # clear statuses from redis passing an optional range. See `statuses` for info
+        # clear statuses from mongo passing an optional range. See `statuses` for info
         # about ranges
         def self.clear(range_start = nil, range_end = nil)
           status_ids(range_start, range_end).each do |id|
@@ -72,12 +77,16 @@ module Resque
         end
 
         def self.remove(uuid)
-          redis.del(status_key(uuid))
-          redis.zrem(set_key, uuid)
+
+          mongo_statuses.find_and_modify(
+            :query => {:uuid => uuid}, 
+            :remove => true,
+            :sort => [[:uuid, :asc]]
+          )
         end
 
         def self.count
-          redis.zcard(set_key)
+          mongo_statuses.find({}).count
         end
 
         # Return <tt>num</tt> Resque::Plugins::Status::Hash objects in reverse chronological order.
@@ -88,22 +97,25 @@ module Resque
         #   Resque::Plugins::Status::Hash.statuses(0, 20)
         def self.statuses(range_start = nil, range_end = nil)
           status_ids(range_start, range_end).collect do |id|
-            get(id)
+            get(id) if id
           end.compact
         end
 
         # Return the <tt>num</tt> most recent status/job UUIDs in reverse chronological order.
         def self.status_ids(range_start = nil, range_end = nil)
-          unless range_end && range_start
-            # Because we want a reverse chronological order, we need to get a range starting
-            # by the higest negative number.
-            redis.zrevrange(set_key, 0, -1) || []
-          else
-            # Because we want a reverse chronological order, we need to get a range starting
-            # by the higest negative number. The ordering is transparent from the API user's
-            # perspective so we need to convert the passed params
-            (redis.zrevrange(set_key, (range_start.abs), ((range_end || 1).abs)) || [])
-          end
+          #   # Because we want a reverse chronological order, we need to get a range starting
+          #   # by the higest negative number.
+          #   # perspective so we need to convert the passed params
+            opts = {
+              :sort => [['_id', Mongo::DESCENDING]], 
+              :fields => ['uuid'],
+              :skip => (range_start and range_end) ? range_start : 0 || 0,
+              :limit => (range_end and range_start) ? ((range_end - range_start) < 1) ? 1 : (range_end - range_start) : 0
+            }
+
+            mongo_statuses.find({}, opts).map { |d| d['uuid'] } || []
+
+          # end
         end
 
         # Kill the job at UUID on its next iteration this works by adding the UUID to a
@@ -111,17 +123,17 @@ module Resque
         # if it _should_ be killed by calling <tt>tick</tt> or <tt>at</tt>. If so, it raises
         # a <tt>Resque::Plugins::Status::Killed</tt> error and sets the status to 'killed'.
         def self.kill(uuid)
-          redis.sadd(kill_key, uuid)
+          mongo_statuses.update({:uuid => uuid}, {"$set" => { kill_key.to_sym => true } })
         end
 
         # Remove the job at UUID from the kill list
         def self.killed(uuid)
-          redis.srem(kill_key, uuid)
+          mongo_statuses.update({:uuid => uuid}, {"$set" => {kill_key.to_sym => false}})
         end
 
         # Return the UUIDs of the jobs on the kill list
         def self.kill_ids
-          redis.smembers(kill_key)
+          mongo_statuses.find({kill_key => true}, {:fields => ['uuid']}).map { |d| d['uuid']} || []
         end
 
         # Kills <tt>num</tt> jobs within range starting with the most recent first.
@@ -140,10 +152,10 @@ module Resque
 
         # Check whether a job with UUID is on the kill list
         def self.should_kill?(uuid)
-          redis.sismember(kill_key, uuid)
+          mongo_statuses.find_one({:uuid => uuid, kill_key => true})
         end
 
-        # The time in seconds that jobs and statuses should expire from Redis (after
+        # The time in seconds that jobs and statuses should expire from Mongo (after
         # the last time they are touched/updated)
         def self.expire_in
           @expire_in
@@ -173,6 +185,7 @@ module Resque
         def self.hash_accessor(name, options = {})
           options[:default] ||= nil
           coerce = options[:coerce] ? ".#{options[:coerce]}" : ""
+
           module_eval <<-EOT
           def #{name}
             value = (self['#{name}'] ? self['#{name}']#{coerce} : #{options[:default].inspect})
@@ -212,7 +225,7 @@ module Resque
             'time' => Time.now.to_i,
             'status' => 'queued'
           }
-          base_status['uuid'] = args.shift if args.length > 1
+          base_status['uuid'] = args.shift if args.length >= 1
           status_hash = args.inject(base_status) do |final, m|
             m = {'message' => m} if m.is_a?(String)
             final.merge(m || {})
@@ -256,11 +269,18 @@ module Resque
           end
         end
 
+        # unless method_defined?(:to_hash)
+          def to_hash
+            self.dup.tap do |h|
+              h['pct_complete'] = pct_complete
+            end
+          end
+        # end
+
         # Return a JSON representation of the current object.
         def json
-          h = self.dup
-          h['pct_complete'] = pct_complete
-          self.class.encode(h)
+          
+          self.class.encode(hash)
         end
 
         def inspect

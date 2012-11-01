@@ -4,7 +4,8 @@ class TestResquePluginsStatus < Test::Unit::TestCase
 
   context "Resque::Plugins::Status" do
     setup do
-      Resque.redis.flushall
+      Resque.queues.each { |queue| Resque.remove_queue(queue) }
+      Resque.mongo_statuses.drop()
     end
 
     context ".create" do
@@ -199,7 +200,7 @@ class TestResquePluginsStatus < Test::Unit::TestCase
       end
 
       should "only perform iterations up to kill" do
-        assert_equal 1, Resque.redis.get("#{@uuid}:iterations").to_i
+        assert_equal 1, iteration_step(@uuid)
       end
 
       should "not persist the kill key" do
@@ -237,8 +238,8 @@ class TestResquePluginsStatus < Test::Unit::TestCase
       end
 
       should "only perform iterations up to kill" do
-        assert_equal 1, Resque.redis.get("#{@uuid1}:iterations").to_i
-        assert_equal 1, Resque.redis.get("#{@uuid2}:iterations").to_i
+        assert_equal 1, iteration_step(@uuid1)
+        assert_equal 1, iteration_step(@uuid2)
       end
 
       should "not persist the kill key" do
@@ -254,7 +255,7 @@ class TestResquePluginsStatus < Test::Unit::TestCase
         @uuid2    = KillableJob.create(:num => 100)
 
         Resque::Plugins::Status::Hash.killall(0,0) # only @uuid2 should be killed
-
+        
         assert_does_not_contain Resque::Plugins::Status::Hash.kill_ids, @uuid1
         assert_contains Resque::Plugins::Status::Hash.kill_ids, @uuid2
 
@@ -278,8 +279,9 @@ class TestResquePluginsStatus < Test::Unit::TestCase
       end
 
       should "only perform iterations up to kill" do
-        assert_equal 100, Resque.redis.get("#{@uuid1}:iterations").to_i
-        assert_equal 1, Resque.redis.get("#{@uuid2}:iterations").to_i
+
+        assert_equal 100, iteration_step(@uuid1)
+        assert_equal 1, iteration_step(@uuid2)
       end
 
       should "not persist the kill key" do

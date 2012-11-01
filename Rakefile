@@ -8,14 +8,14 @@ require 'resque/tasks'
 begin
   require 'jeweler'
   Jeweler::Tasks.new do |gem|
-    gem.name = "resque-status"
+    gem.name = "resque-mongo-status"
     gem.version = Resque::Plugins::Status::VERSION
-    gem.summary = %Q{resque-status is an extension to the resque queue system that provides simple trackable jobs.}
-    gem.description = %Q{resque-status is an extension to the resque queue system that provides simple trackable jobs. It provides a Resque::Plugins::Status::Hash class which can set/get the statuses of jobs and a Resque::Plugins::Status class that when included provides easily trackable/killable jobs.}
-    gem.email = "aaron@quirkey.com"
-    gem.homepage = "http://github.com/quirkey/resque-status"
-    gem.rubyforge_project = "quirkey"
-    gem.authors = ["Aaron Quint"]
+    gem.summary = %Q{resque-mongo-status is an extension to the resque queue system that provides simple trackable jobs.}
+    gem.description = %Q{resque-mongo-status is an extension to the resque queue system that provides simple trackable jobs. It provides a Resque::Plugins::Status::Hash class which can set/get the statuses of jobs and a Resque::Plugins::Status class that when included provides easily trackable/killable jobs.}
+    gem.email = "emil@x86.nu"
+    gem.homepage = "http://github.com/mrevilme/resque-mongo-status"
+    gem.rubyforge_project = "mrevilme"
+    gem.authors = ["Aaron Quint","Emil Palm"]
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
   end
   Jeweler::GemcutterTasks.new

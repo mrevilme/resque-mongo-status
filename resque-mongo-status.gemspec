@@ -4,14 +4,14 @@
 # -*- encoding: utf-8 -*-
 
 Gem::Specification.new do |s|
-  s.name = "resque-status"
-  s.version = "0.4.0"
+  s.name = "resque-mongo-status"
+  s.version = "0.1.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
-  s.authors = ["Aaron Quint"]
-  s.date = "2012-10-31"
-  s.description = "resque-status is an extension to the resque queue system that provides simple trackable jobs. It provides a Resque::Plugins::Status::Hash class which can set/get the statuses of jobs and a Resque::Plugins::Status class that when included provides easily trackable/killable jobs."
-  s.email = "aaron@quirkey.com"
+  s.authors = ["Aaron Quint", "Emil Palm"]
+  s.date = "2012-11-01"
+  s.description = "resque-mongo-status is an extension to the resque queue system that provides simple trackable jobs. It provides a Resque::Plugins::Status::Hash class which can set/get the statuses of jobs and a Resque::Plugins::Status class that when included provides easily trackable/killable jobs."
+  s.email = "emil@x86.nu"
   s.extra_rdoc_files = [
     "LICENSE",
     "README.rdoc"
@@ -35,16 +35,16 @@ Gem::Specification.new do |s|
     "lib/resque/status.rb",
     "lib/resque/status_server.rb",
     "resque-status.gemspec",
-    "test/redis-test.conf",
+    "test/mongod.conf",
     "test/test_helper.rb",
     "test/test_resque_plugins_status.rb",
     "test/test_resque_plugins_status_hash.rb"
   ]
-  s.homepage = "http://github.com/quirkey/resque-status"
+  s.homepage = "http://github.com/mrevilme/resque-mongo-status"
   s.require_paths = ["lib"]
-  s.rubyforge_project = "quirkey"
+  s.rubyforge_project = "mrevilme"
   s.rubygems_version = "1.8.24"
-  s.summary = "resque-status is an extension to the resque queue system that provides simple trackable jobs."
+  s.summary = "resque-mongo-status is an extension to the resque queue system that provides simple trackable jobs."
 
   if s.respond_to? :specification_version then
     s.specification_version = 3

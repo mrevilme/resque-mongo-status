@@ -1,6 +1,6 @@
 = resque-status
 
-resque-status is an extension to the resque queue system that provides simple trackable jobs.
+resque-mongo-status is an extension to the resque queue system that provides simple trackable jobs.
 
 == About
 
@@ -11,13 +11,13 @@ and allowing the job instances to report their status from within their iteratio
 
 == Installation
 
-resque-status *requires Redis >= 1.1* (though I recommend getting the latest stable version). 
-You can download Redis here: http://code.google.com/p/redis/ or install it 
-using homebrew (brew install redis).
+resque-mongo-status *requires >= 1.0.0* (though I recommend getting the latest stable version). 
+You can download MongoDB here: http://www.mongodb.org/ or install it 
+using homebrew (brew install mongodb).s
 
 Install the resque-status gem (which will pull in the dependencies).
 
-  gem install resque-status
+  gem install resque-mongo-status
   
 To use with Rails 2.x, you can install as a plugin or add the gem to you're config:
   
@@ -27,12 +27,11 @@ To use with Rails 2.x, you can install as a plugin or add the gem to you're conf
 With newer Rails add this to your Gemfile:
 
   # Gemfile
-  gem 'resque-status'
+  gem 'resque-mongo-status', :require 'resque-status'
 
 Then in an initializer:
   
   # config/initializers/resque.rb
-  Resque.redis = "your/redis/socket" # default localhost:6379
   Resque::Plugins::Status::Hash.expire_in = (24 * 60 * 60) # 24hrs in seconds
 
 == NOTES ABOUT UPGRADING TO >= v0.3 
@@ -134,8 +133,7 @@ error and set the status to killed.
 
 === Expiration
 
-Since Redis is RAM based, we probably don't want to keep these statuses around forever 
-(at least until @antirez releases the VM feature). By setting expire_in, all statuses
+You might not want to keep the statuses around forever  By setting expire_in, all statuses
 and thier related keys will expire in expire_in seconds from the last time theyre updated:
 
   Resque::Plugins::Status::Hash.expire_in = (60 * 60) # 1 hour
@@ -161,14 +159,13 @@ http://img.skitch.com/20100119-k166xyijcjpkk6xtwnw3854a8g.jpg
       
 == More
 
-Source: http://github.com/quirkey/resque-status
-API Docs: http://rdoc.info/projects/quirkey/resque-status
-Examples: http://github.com/quirkey/resque-status/tree/master/examples
-Resque: http://github.com/defunkt/resque
+Source: http://github.com/mrevilme/resque-mongo-status
+Examples: http://github.com/mongo/resque-mongo-status/tree/master/examples
+Resque-Mongo: https://github.com/streamio/mongo-resque
             
 == Thanks
 
-Resque is awesome, @defunkt needs a shout-out. 
+Resque is awesome, @defunkt needs a shout-out. Also @streamio for making the mongo fork
   
 == Note on Patches/Pull Requests
  
@@ -183,3 +180,4 @@ Resque is awesome, @defunkt needs a shout-out.
 == Copyright
 
 Copyright (c) 2010 Aaron Quint. See LICENSE for details.
+Copyright (c) 2012 Emil Palm. See LICENSE for details.
